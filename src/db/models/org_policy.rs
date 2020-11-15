@@ -4,7 +4,7 @@ use crate::api::EmptyResult;
 use crate::db::DbConn;
 use crate::error::MapResult;
 
-use super::Organization;
+use super::{Organization, UserOrgStatus};
 
 db_object! {
     #[derive(Debug, Identifiable, Queryable, Insertable, Associations, AsChangeset)]
@@ -129,10 +129,13 @@ impl OrgPolicy {
     pub fn find_by_user(user_uuid: &str, conn: &DbConn) -> Vec<Self> {
         db_run! { conn: {
             org_policies::table
-                .left_join(
+                .inner_join(
                     users_organizations::table.on(
                         users_organizations::org_uuid.eq(org_policies::org_uuid)
                             .and(users_organizations::user_uuid.eq(user_uuid)))
+                )
+                .filter(
+                    users_organizations::status.eq(UserOrgStatus::Confirmed as i32)
                 )
                 .select(org_policies::all_columns)
                 .load::<OrgPolicyDb>(conn)
